@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>English Buddy AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:#0a0a0f; --surface:#13131e; --card:#1c1c2a; --border:#2a2a40;
+    --accent:#7c6fff; --green:#43e97b; --pink:#ff6584;
+    --text:#e8e8f5; --muted:#6868a0; --glow:rgba(124,111,255,0.35);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    font-family:'DM Sans',sans-serif;
+    background:var(--bg); color:var(--text);
+    min-height:100vh; display:flex; flex-direction:column; align-items:center;
+  }
+  body::before{
+    content:''; position:fixed; inset:0;
+    background:
+      radial-gradient(ellipse 70% 50% at 15% 15%,rgba(124,111,255,0.08) 0%,transparent 60%),
+      radial-gradient(ellipse 50% 40% at 85% 85%,rgba(255,101,132,0.06) 0%,transparent 60%);
+    pointer-events:none; z-index:0;
+  }
+  .wrap{
+    width:100%; max-width:700px; padding:14px;
+    position:relative; z-index:1;
+    display:flex; flex-direction:column; min-height:100vh; gap:10px;
+  }
+
+  /* Header */
+  header{text-align:center;padding:10px 0 4px}
+  .logo{
+    font-family:'Syne',sans-serif; font-size:1.7rem; font-weight:800;
+    background:linear-gradient(135deg,var(--accent),var(--pink));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+  }
+  .tagline{color:var(--muted);font-size:0.78rem;margin-top:2px}
+
+  /* Mode */
+  .modes{
+    display:flex;gap:5px;background:var(--surface);
+    border:1px solid var(--border);border-radius:12px;padding:5px;
+  }
+  .mode{
+    flex:1;padding:8px 6px;border:none;border-radius:8px;
+    background:transparent;color:var(--muted);
+    font-family:'DM Sans',sans-serif;font-size:0.76rem;font-weight:500;cursor:pointer;
+    transition:all 0.2s;
+  }
+  .mode.on{background:var(--accent);color:#fff;box-shadow:0 0 16px var(--glow)}
+
+  /* Stats */
+  .stats{display:flex;gap:7px}
+  .stat{
+    flex:1;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:8px;text-align:center;
+  }
+  .sv{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:var(--accent)}
+  .sl{font-size:0.6rem;color:var(--muted);margin-top:1px}
+
+  /* Orb */
+  .orb-area{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0}
+  .orb-wrap{position:relative;width:100px;height:100px}
+  .orb{
+    width:100px;height:100px;border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#a29bfe,#7c6fff 50%,#5a4fcf);
+    box-shadow:0 0 32px rgba(124,111,255,0.5),inset 0 0 24px rgba(255,255,255,0.1);
+    transition:all 0.3s; cursor:pointer;
+  }
+  .orb.listening{
+    background:radial-gradient(circle at 35% 35%,#81ecec,#43e97b 50%,#00b09b);
+    box-shadow:0 0 46px rgba(67,233,123,0.6);
+    animation:lp 1s ease-in-out infinite;
+  }
+  .orb.speaking{animation:sp 0.5s ease-in-out infinite alternate}
+  @keyframes lp{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+  @keyframes sp{0%{transform:scale(1);box-shadow:0 0 32px rgba(124,111,255,0.5)}100%{transform:scale(1.1);box-shadow:0 0 60px rgba(124,111,255,0.9)}}
+  .wave{
+    position:absolute;border-radius:50%;border:2px solid rgba(124,111,255,0.2);
+    top:50%;left:50%;transform:translate(-50%,-50%);
+    animation:wo 2s ease-out infinite;opacity:0;
+  }
+  .wave:nth-child(2){animation-delay:0.7s}.wave:nth-child(3){animation-delay:1.4s}
+  @keyframes wo{0%{width:100px;height:100px;opacity:0.5}100%{width:180px;height:180px;opacity:0}}
+  .stxt{
+    font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;
+    letter-spacing:2px;text-transform:uppercase;color:var(--muted);transition:color 0.3s;
+  }
+  .stxt.listening{color:var(--green)}.stxt.speaking{color:var(--accent)}
+
+  /* SPEAK button - big tap button for Android TTS */
+  .speak-btn{
+    display:flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:8px 16px;
+    color:var(--muted);font-size:0.78rem;cursor:pointer;
+    transition:all 0.2s; width:100%;
+  }
+  .speak-btn:active{background:var(--card);border-color:var(--accent);color:var(--accent)}
+  .speak-btn.hidden{display:none}
+
+  /* Chat */
+  .chat{
+    flex:1;background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;padding:12px;
+    display:flex;flex-direction:column;gap:10px;
+    overflow-y:auto;min-height:160px;max-height:280px;
+    scroll-behavior:smooth;
+  }
+  .chat::-webkit-scrollbar{width:3px}
+  .chat::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  .empty{
+    flex:1;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    color:var(--muted);font-size:0.8rem;gap:5px;text-align:center;padding:16px;
+  }
+  .msg{display:flex;flex-direction:column;gap:3px;animation:mi 0.3s ease}
+  @keyframes mi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  .msg.user{align-items:flex-end}.msg.ai{align-items:flex-start}
+  .mlabel{font-size:0.58rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:0 3px}
+  .bubble{max-width:88%;padding:9px 13px;border-radius:12px;font-size:0.87rem;line-height:1.5}
+  .msg.user .bubble{background:var(--accent);color:#fff;border-bottom-right-radius:3px}
+  .msg.ai  .bubble{background:var(--card);border:1px solid var(--border);border-bottom-left-radius:3px}
+  .corr{
+    max-width:88%;background:rgba(255,101,132,0.1);
+    border:1px solid rgba(255,101,132,0.3);border-radius:8px;
+    padding:5px 10px;font-size:0.75rem;color:var(--pink);margin-top:2px;
+  }
+  .corr strong{color:var(--green)}
+
+  /* Mic button */
+  .mic-area{display:flex;flex-direction:column;align-items:center;gap:8px}
+  .mic{
+    width:68px;height:68px;border-radius:50%;border:none;
+    background:linear-gradient(135deg,var(--accent),#5a4fcf);
+    color:#fff;font-size:1.5rem;cursor:pointer;
+    box-shadow:0 4px 20px var(--glow);
+    display:flex;align-items:center;justify-content:center;
+    transition:all 0.2s; user-select:none;
+  }
+  .mic:active{transform:scale(0.94)}
+  .mic.rec{
+    background:linear-gradient(135deg,var(--green),#00b09b);
+    box-shadow:0 4px 26px rgba(67,233,123,0.55);
+    animation:rp 1s ease-in-out infinite;
+  }
+  @keyframes rp{0%,100%{box-shadow:0 4px 26px rgba(67,233,123,0.55)}50%{box-shadow:0 4px 45px rgba(67,233,123,0.8)}}
+  .mic-hint{font-size:0.72rem;color:var(--muted)}
+
+  /* Info banner */
+  .info-banner{
+    background:rgba(124,111,255,0.08);border:1px solid rgba(124,111,255,0.2);
+    border-radius:10px;padding:9px 13px;font-size:0.76rem;color:var(--muted);
+    text-align:center;line-height:1.5;
+  }
+  .info-banner b{color:var(--accent)}
+
+  /* Speed */
+  .speed-row{
+    display:flex;gap:6px;align-items:center;
+    background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:9px 13px;
+  }
+  .speed-row label{font-size:0.76rem;color:var(--muted)}
+  .speed-row select{
+    flex:1;background:var(--card);border:1px solid var(--border);
+    border-radius:6px;color:var(--text);padding:3px 7px;
+    font-family:'DM Sans',sans-serif;font-size:0.78rem;outline:none;
+  }
+
+  /* Type */
+  .type-row{display:flex;gap:7px}
+  .tin{
+    flex:1;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;color:var(--text);padding:10px 13px;
+    font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;
+    transition:border-color 0.2s;
+  }
+  .tin:focus{border-color:var(--accent)}
+  .tsend{
+    padding:10px 16px;background:var(--accent);border:none;
+    border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;
+    font-size:0.88rem;font-weight:500;cursor:pointer;
+    transition:all 0.2s;
+  }
+  .tsend:active{background:#6a5ef0}
+
+  /* Actions */
+  .acts{display:flex;gap:6px;margin-bottom:6px}
+  .act{
+    flex:1;padding:9px 4px;background:var(--surface);border:1px solid var(--border);
+    border-radius:9px;color:var(--muted);font-family:'DM Sans',sans-serif;
+    font-size:0.73rem;cursor:pointer;transition:all 0.2s;text-align:center;
+  }
+  .act:active{border-color:var(--accent);color:var(--accent)}
+
+  .toast{
+    position:fixed;bottom:16px;left:50%;
+    transform:translateX(-50%) translateY(80px);
+    background:var(--card);border:1px solid var(--border);
+    border-radius:9px;padding:9px 18px;font-size:0.8rem;
+    color:var(--text);transition:transform 0.3s;z-index:999;
+    max-width:90vw;text-align:center;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🗣️ English Buddy AI</div>
+    <div class="tagline">Aapka personal English coach — bolte raho, seekhte raho!</div>
+  </header>
+
+  <div class="modes">
+    <button class="mode on" id="m-free"    onclick="setMode('free')">Free Talk</button>
+    <button class="mode"    id="m-correct" onclick="setMode('correct')">Correct Me</button>
+    <button class="mode"    id="m-topic"   onclick="setMode('topic')">Topic</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="sv" id="sMsg">0</div><div class="sl">Messages</div></div>
+    <div class="stat"><div class="sv" id="sCor">0</div><div class="sl">Corrections</div></div>
+    <div class="stat"><div class="sv" id="sStr">0</div><div class="sl">Streak 🔥</div></div>
+  </div>
+
+  <div class="orb-area">
+    <div class="orb-wrap">
+      <div class="orb" id="orb"></div>
+      <div class="wave"></div><div class="wave"></div><div class="wave"></div>
+    </div>
+    <div class="stxt" id="stxt">READY TO TALK</div>
+  </div>
+
+  <!-- Android: tap to hear last message -->
+  <button class="speak-btn hidden" id="speakBtn" onclick="speakLast()">
+    🔊 Tap to hear AI's reply
+  </button>
+
+  <div class="chat" id="chat">
+    <div class="empty" id="empty">
+      <span style="font-size:2rem">👋</span>
+      <span>Neeche type karo ya mic dabao!</span>
+      <span style="font-size:0.7rem;opacity:0.5">Hindi mein bhi likh sakte ho</span>
+    </div>
+  </div>
+
+  <div class="info-banner" id="infoBanner">
+    📱 <b>Android tip:</b> Pehli baar mic dabao toh browser permission maangega — <b>Allow</b> karo. Awaaz ke liye <b>"Tap to hear"</b> button use karo.
+  </div>
+
+  <!-- Mic -->
+  <div class="mic-area">
+    <button class="mic" id="micBtn" onclick="toggleMic()">🎤</button>
+    <div class="mic-hint" id="micHint">Mic dabao aur bolo</div>
+  </div>
+
+  <!-- Speed only (voice auto) -->
+  <div class="speed-row">
+    <label>Speed:</label>
+    <select id="speedSel">
+      <option value="0.75">Slow 🐢</option>
+      <option value="1" selected>Normal</option>
+      <option value="1.2">Fast ⚡</option>
+    </select>
+    <label style="margin-left:8px">Lang:</label>
+    <select id="langSel">
+      <option value="en-IN" selected>Hindi-English (IN)</option>
+      <option value="en-US">English (US)</option>
+      <option value="en-GB">English (UK)</option>
+    </select>
+  </div>
+
+  <!-- Type -->
+  <div class="type-row">
+    <input class="tin" id="tin" placeholder="Ya yahan type karo (English ya Hindi)..." onkeypress="onKey(event)">
+    <button class="tsend" onclick="sendTyped()">Send</button>
+  </div>
+
+  <div class="acts">
+    <button class="act" onclick="doTopic()">💡 Topic</button>
+    <button class="act" onclick="speakLast()">🔊 Repeat</button>
+    <button class="act" onclick="clearAll()">🗑️ Clear</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let mode='free', isRec=false, isSpeaking=false;
+let recognition=null, lastAI='';
+let msgCount=0, corCount=0;
+let history=[];
+let ttsOk = !!(window.speechSynthesis);
+let voicesList=[];
+
+// ── Topics ────────────────────────────────────────────────────────────────────
+const TOPICS=[
+  'your daily routine','your favorite food','your dream job',
+  'a movie you watched recently','what you do on weekends',
+  'your family','your future goals','your hobbies',
+  'a challenge you faced','your favorite sport',
+  'your best friend','something you want to learn',
+  'your favorite place in India','your childhood memories',
+  'technology and smartphones'
+];
+
+// ── Corrections DB ────────────────────────────────────────────────────────────
+const CORR={
+  'i am agree'        :{fix:'I agree',           tip:'No "am" with agree'},
+  'i am disagree'     :{fix:'I disagree',         tip:'No "am" needed'},
+  'she don\'t'        :{fix:'she doesn\'t',       tip:'He/she/it → doesn\'t'},
+  'he don\'t'         :{fix:'he doesn\'t',        tip:'He/she/it → doesn\'t'},
+  'they was'          :{fix:'they were',          tip:'"they were" not "they was"'},
+  'we was'            :{fix:'we were',            tip:'"we were" not "we was"'},
+  'i has'             :{fix:'I have',             tip:'"I have" not "I has"'},
+  'he have'           :{fix:'he has',             tip:'He/she/it → has'},
+  'she have'          :{fix:'she has',            tip:'He/she/it → has'},
+  'more better'       :{fix:'better',             tip:'Just "better" — "more" is extra'},
+  'more faster'       :{fix:'faster',             tip:'Just "faster" — no "more"'},
+  'i can to'          :{fix:'I can',              tip:'After "can" — no "to"'},
+  'i want go'         :{fix:'I want to go',       tip:'Say "want to go"'},
+  'yesterday i go'    :{fix:'Yesterday I went',   tip:'Past: "went" not "go"'},
+  'yesterday i see'   :{fix:'Yesterday I saw',    tip:'Past: "saw" not "see"'},
+  'i am boring'       :{fix:'I am bored',         tip:'"bored" (feeling) not "boring"'},
+  'i am confusing'    :{fix:'I am confused',      tip:'"confused" not "confusing"'},
+  'since 2 years'     :{fix:'for 2 years',        tip:'Use "for" with duration'},
+  'since long time'   :{fix:'for a long time',    tip:'"for a long time"'},
+  'open the light'    :{fix:'turn on the light',  tip:'"turn on" not "open"'},
+  'close the light'   :{fix:'turn off the light', tip:'"turn off" not "close"'},
+};
+
+// ── Response bank ─────────────────────────────────────────────────────────────
+const R={
+  greet:[
+    "Hey! Great to see you! 😊 How are you doing today? Tell me something interesting!",
+    "Hello! Wonderful to chat with you! What's been on your mind lately?",
+    "Hi! So happy you're here to practice English! What did you do today?",
+  ],
+  howAreYou:[
+    "I'm doing fantastic, thanks! 😊 What about you — how's your day going?",
+    "I'm great! Always happy when we get to talk! What's the best part of your day?",
+    "Wonderful! I love practicing English with you. How are YOU feeling?",
+  ],
+  hindi:[
+    "I understood! Now let's say it in English — try it, I'll help you! 😊",
+    "Got it! Now switch to English — give it a try! I believe in you! 💪",
+    "Understood! Let's practice in English now — what would you like to say?",
+  ],
+  agree:[
+    "Absolutely! I totally agree. Can you tell me more about why you feel that way?",
+    "Yes, great point! I think so too. What made you think about this?",
+    "Exactly! You're right. Can you give me an example from your own life?",
+  ],
+  disagree:[
+    "Hmm, interesting! I see it a little differently. What do you think about the other side?",
+    "That's a unique perspective! What would you say to people who disagree?",
+    "Good point! But what about people who might see it differently?",
+  ],
+  work:[
+    "Interesting! Tell me more — what exactly do you do? Do you enjoy it?",
+    "Oh wow! What's the most challenging part of your job or studies?",
+    "Cool! Is this what you always wanted to do, or did your plans change?",
+  ],
+  food:[
+    "Yum! That sounds delicious! What's the best meal you've ever eaten?",
+    "Oh I love hearing about food! Can you describe how it tastes?",
+    "Great choice! Do you cook it yourself or prefer restaurants?",
+  ],
+  movie:[
+    "Ooh! What was the last movie or show you watched? Did you like it?",
+    "Nice! What genre do you prefer — action, comedy, drama, or something else?",
+    "Tell me about a movie that really changed the way you think!",
+  ],
+  family:[
+    "Family is so important! How many people are in your family? Who are you closest to?",
+    "Aw, sweet! What do you love most about your family?",
+    "Do you live with your family or on your own?",
+  ],
+  hobby:[
+    "Oh that's cool! How long have you been doing this? Are you good at it?",
+    "I love that! What got you started? Tell me more!",
+    "Awesome! If you could teach someone one thing about it, what would it be?",
+  ],
+  future:[
+    "Exciting! What's your biggest goal for the next year?",
+    "Love your ambition! What steps are you taking to reach that goal?",
+    "Great thinking! If there were no limits, what would your dream future look like?",
+  ],
+  default:[
+    "Really? Tell me more! I'm genuinely curious about that.",
+    "Oh interesting! And how does that make you feel?",
+    "Wow! Can you explain a bit more?",
+    "That's a great point! What do you think about it personally?",
+    "I see! So what happened next?",
+    "Hmm! And what's your opinion on that?",
+    "Have you always felt that way, or did your thinking change over time?",
+    "If you could change one thing about this situation, what would it be?",
+    "You're doing great with your English! Keep going — tell me more!",
+    "Nice! Is this something you care deeply about?",
+    "Wow, I never thought about it that way! Tell me more.",
+    "That sounds exciting! What do you enjoy most about it?",
+  ],
+  topicStart:[
+    "Great! Let's talk about {t}. What comes to your mind first?",
+    "Alright! Our topic is: {t}. Go ahead — share anything!",
+    "Let's discuss {t}! Start anywhere — just speak freely. 😊",
+  ],
+  encourage:[
+    "You're doing amazing! 🌟 ",
+    "Wow, great sentence! 💪 ",
+    "Excellent! You expressed that so well! 🎉 ",
+    "I'm really impressed! 😊 ",
+  ],
+  vocab:[
+    " 💡 Tip: Instead of 'good', try 'excellent' or 'wonderful'!",
+    " 💡 Instead of 'bad', say 'terrible' or 'disappointing'.",
+    " 💡 Instead of 'big', try 'enormous' or 'massive'!",
+    " 💡 Instead of 'happy', try 'thrilled' or 'delighted'!",
+  ]
+};
+
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+
+function isHindi(t){
+  const hw=['mujhe','mera','meri','hai','hain','kya','aur','nahi','bhi','toh','yeh','woh','kaise','kab','kyun','tha','thi','the','raha','rahi','main','hum','aap','tum','iska','uska'];
+  const w=t.toLowerCase().split(/\s+/);
+  return w.filter(x=>hw.includes(x)).length>=1;
+}
+
+function findCorr(text){
+  const l=text.toLowerCase();
+  for(const[wrong,d] of Object.entries(CORR)){
+    if(l.includes(wrong)) return `Instead of "<em>${wrong}</em>", say "<strong>${d.fix}</strong>" — ${d.tip}`;
+  }
+  return null;
+}
+
+function detectIntent(t){
+  const l=t.toLowerCase();
+  if(/\b(hello|hi|hey|namaste|hii|helo|sup)\b/.test(l)) return 'greet';
+  if(/\b(how are you|kaisa|kaise ho|you doing|hows)\b/.test(l)) return 'howAreYou';
+  if(/\b(yes|yeah|yep|haan|agree|correct|right|true|absolutely|sure)\b/.test(l)) return 'agree';
+  if(/\b(no|nope|nahi|disagree|wrong|false|not really)\b/.test(l)) return 'disagree';
+  if(/\b(work|job|office|study|student|college|school|class)\b/.test(l)) return 'work';
+  if(/\b(food|eat|meal|restaurant|cook|khana|pizza|biryani|dinner|lunch)\b/.test(l)) return 'food';
+  if(/\b(movie|film|show|series|watch|netflix|cinema)\b/.test(l)) return 'movie';
+  if(/\b(family|mom|dad|brother|sister|parents|ghar|gharwale)\b/.test(l)) return 'family';
+  if(/\b(hobby|free time|weekend|fun|enjoy|cricket|football|music|dance|sing|read|game)\b/.test(l)) return 'hobby';
+  if(/\b(future|goal|dream|plan|want to become|aspire|wish)\b/.test(l)) return 'future';
+  return 'default';
+}
+
+function generateReply(userText){
+  if(isHindi(userText)){
+    return {text:pick(R.hindi), correction:null};
+  }
+  const intent=detectIntent(userText);
+  let correction=null;
+  if(mode==='correct'){
+    const c=findCorr(userText);
+    if(c){correction=c; corCount++; document.getElementById('sCor').textContent=corCount;}
+  }
+  const enc=Math.random()<0.15 ? pick(R.encourage) : '';
+  const voc=(mode!=='free'&&Math.random()<0.18) ? pick(R.vocab) : '';
+  const base=R[intent]?pick(R[intent]):pick(R.default);
+  return {text: enc+base+voc, correction};
+}
+
+// ── TTS ───────────────────────────────────────────────────────────────────────
+function loadVoices(){
+  if(!ttsOk) return;
+  voicesList=window.speechSynthesis.getVoices();
+}
+if(ttsOk){
+  window.speechSynthesis.onvoiceschanged=loadVoices;
+  loadVoices();
+}
+
+function speak(text){
+  if(!ttsOk){ orbState('idle'); return; }
+  try{ window.speechSynthesis.cancel(); } catch(e){}
+
+  const clean=text.replace(/<[^>]+>/g,'').replace(/💡[^\.!]*[\.!]/g,'').trim();
+  if(!clean) return;
+
+  const u=new SpeechSynthesisUtterance(clean);
+
+  // Pick best voice for Android
+  if(voicesList.length===0) voicesList=window.speechSynthesis.getVoices();
+  const prefer=['Google UK English Female','Google US English','en-IN','en-US','en-GB'];
+  let chosen=null;
+  for(const p of prefer){
+    chosen=voicesList.find(v=>v.name===p||v.lang===p);
+    if(chosen) break;
+  }
+  if(!chosen) chosen=voicesList.find(v=>v.lang.startsWith('en'));
+  if(chosen) u.voice=chosen;
+
+  u.rate=parseFloat(document.getElementById('speedSel').value||'1');
+  u.pitch=1.05; u.volume=1;
+
+  u.onstart=()=>{isSpeaking=true; orbState('speaking')};
+  u.onend  =()=>{isSpeaking=false; orbState('idle')};
+  u.onerror=()=>{isSpeaking=false; orbState('idle')};
+
+  // Android fix: small delay before speaking
+  setTimeout(()=>{
+    try{ window.speechSynthesis.speak(u); } catch(e){ orbState('idle'); }
+  },100);
+}
+
+function speakLast(){
+  if(lastAI) speak(lastAI);
+  else toast('Koi message nahi hai abhi!');
+}
+
+// ── Orb ───────────────────────────────────────────────────────────────────────
+function orbState(s){
+  const orb=document.getElementById('orb');
+  const st=document.getElementById('stxt');
+  orb.className='orb'; st.className='stxt';
+  if(s==='listening'){orb.classList.add('listening');st.textContent='LISTENING...';st.classList.add('listening');}
+  else if(s==='speaking'){orb.classList.add('speaking');st.textContent='SPEAKING...';st.classList.add('speaking');}
+  else if(s==='thinking'){st.textContent='THINKING...';}
+  else{st.textContent='READY TO TALK';}
+}
+
+// ── Mic ───────────────────────────────────────────────────────────────────────
+function initRec(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){
+    toast('Voice not supported — please type below!');
+    document.getElementById('micBtn').style.opacity='0.3';
+    document.getElementById('micBtn').style.pointerEvents='none';
+    document.getElementById('micHint').textContent='Type karo neeche';
+    return false;
+  }
+  recognition=new SR();
+  recognition.continuous=false;
+  recognition.interimResults=false; // false = more reliable on Android
+  recognition.lang=document.getElementById('langSel').value||'en-IN';
+
+  recognition.onstart=()=>{
+    isRec=true; orbState('listening');
+    document.getElementById('micBtn').classList.add('rec');
+    document.getElementById('micBtn').textContent='⏹️';
+    document.getElementById('micHint').textContent='Bol raha hai... (dobara dabao band karne ke liye)';
+  };
+  recognition.onresult=e=>{
+    if(e.results.length>0){
+      const t=e.results[e.results.length-1][0].transcript.trim();
+      if(t) processInput(t);
+    }
+  };
+  recognition.onnomatch=()=>{
+    resetMic();
+    toast('Samajh nahi aaya — thoda door se clearly bolo!');
+  };
+  recognition.onerror=e=>{
+    resetMic();
+    if(e.error==='not-allowed'||e.error==='permission-denied'){
+      toast('❌ Mic permission do! Browser settings → Site permissions → Mic → Allow');
+      document.getElementById('infoBanner').innerHTML='⚠️ <b>Mic blocked hai!</b> Browser settings mein jaao → Site permissions → Microphone → <b>Allow</b> karo.';
+    } else if(e.error==='no-speech'){
+      toast('Kuch bola nahi — try again!');
+    } else {
+      toast('Mic error: '+e.error+' — type karo neeche!');
+    }
+  };
+  recognition.onend=()=>{ resetMic(); };
+  return true;
+}
+
+function toggleMic(){
+  if(isSpeaking){ try{window.speechSynthesis.cancel();}catch(e){} isSpeaking=false; orbState('idle'); }
+  if(isRec){ recognition&&recognition.stop(); resetMic(); return; }
+  // Re-init each time for Android reliability
+  recognition=null;
+  if(!initRec()) return;
+  try{ recognition.start(); }
+  catch(e){ toast('Mic shuru nahi hua — phir try karo!'); recognition=null; }
+}
+
+function resetMic(){
+  isRec=false;
+  if(!isSpeaking) orbState('idle');
+  const btn=document.getElementById('micBtn');
+  btn.classList.remove('rec');
+  btn.textContent='🎤';
+  document.getElementById('micHint').textContent='Mic dabao aur bolo';
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
+function addMsg(role,text,corr){
+  const box=document.getElementById('chat');
+  const em=document.getElementById('empty');
+  if(em) em.remove();
+
+  const d=document.createElement('div');
+  d.className=`msg ${role}`;
+  d.innerHTML=`
+    <div class="mlabel">${role==='user'?'You':'🤖 Buddy'}</div>
+    <div class="bubble">${text}</div>
+    ${corr?`<div class="corr">💡 ${corr}</div>`:''}
+  `;
+  box.appendChild(d);
+  box.scrollTop=box.scrollHeight;
+
+  if(role==='user'){msgCount++;document.getElementById('sMsg').textContent=msgCount;}
+}
+
+function processInput(text){
+  if(!text.trim()) return;
+  addMsg('user',text);
+  orbState('thinking');
+
+  setTimeout(()=>{
+    const {text:aiText, correction}=generateReply(text);
+    lastAI=aiText;
+    history.push({role:'user',text});
+    history.push({role:'ai',text:aiText});
+    addMsg('ai',aiText,correction);
+
+    // Show "tap to hear" button (Android-friendly)
+    document.getElementById('speakBtn').classList.remove('hidden');
+
+    // Try auto-speak (works on desktop, may need user gesture on Android)
+    speak(aiText);
+  },400);
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+function sendTyped(){
+  const inp=document.getElementById('tin');
+  const t=inp.value.trim(); if(!t) return;
+  inp.value=''; processInput(t);
+}
+function onKey(e){if(e.key==='Enter') sendTyped();}
+
+function setMode(m){
+  mode=m;
+  ['free','correct','topic'].forEach(x=>document.getElementById(`m-${x}`).classList.toggle('on',x===m));
+  const labels={free:'Free Talk — bas baat karo!',correct:'Correction mode ON 🔍',topic:'Topic mode!'};
+  toast(labels[m]);
+  if(m==='topic') doTopic();
+}
+
+function doTopic(){
+  const t=TOPICS[Math.floor(Math.random()*TOPICS.length)];
+  const reply=pick(R.topicStart).replace('{t}',t);
+  addMsg('ai',reply);
+  lastAI=reply;
+  document.getElementById('speakBtn').classList.remove('hidden');
+  speak(reply);
+}
+
+function clearAll(){
+  const box=document.getElementById('chat');
+  box.innerHTML=`<div class="empty" id="empty"><span style="font-size:2rem">👋</span><span>Naya session — shuru karo!</span></div>`;
+  history=[]; lastAI=''; msgCount=0; corCount=0;
+  document.getElementById('sMsg').textContent='0';
+  document.getElementById('sCor').textContent='0';
+  document.getElementById('speakBtn').classList.add('hidden');
+  try{window.speechSynthesis&&window.speechSynthesis.cancel();}catch(e){}
+  orbState('idle');
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+
+// ── Streak ────────────────────────────────────────────────────────────────────
+(function(){
+  const today=new Date().toDateString();
+  const last=localStorage.getItem('eb_last');
+  let s=parseInt(localStorage.getItem('eb_s')||'0');
+  if(last===today){}
+  else if(last===new Date(Date.now()-86400000).toDateString()){s++;localStorage.setItem('eb_s',s);localStorage.setItem('eb_last',today);}
+  else{s=1;localStorage.setItem('eb_s',1);localStorage.setItem('eb_last',today);}
+  document.getElementById('sStr').textContent=s;
+})();
+
+// ── Auto greet ────────────────────────────────────────────────────────────────
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    const g=pick(R.greet);
+    lastAI=g;
+    addMsg('ai',g);
+    document.getElementById('speakBtn').classList.remove('hidden');
+    // Don't auto-speak on load (Android blocks without user gesture)
+    // User will tap "Tap to hear" button
+  },500);
+});
+</script>
+</body>
+</html>
